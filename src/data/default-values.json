@@ -1,0 +1,21 @@
+{
+    "direccion": "",
+    "comunidadAutonoma": "",
+    "itp": 10,
+    "precioCompra": 0,
+    "impuestoITP": 0,
+    "gastosNotariaRegistro": 0,
+    "gastosHipoteca": 0,
+    "costeReforma": 0,
+    "comisionCompra": 0,
+    "mobiliario": 0,
+    "ibi": 0,
+    "basuras": 0,
+    "seguroHogar": 0,
+    "seguroVida": 0,
+    "seguroImpago": 0,
+    "comunidadPropietarios": 0,
+    "mantenimiento": 0,
+    "periodosVacios": 0,
+    "precioAlquiler": 0
+  }
