@@ -1,7 +1,6 @@
 {
     "direccion": "",
     "comunidadAutonoma": "",
-    "itp": 10,
     "precioCompra": 0,
     "impuestoITP": 0,
     "gastosNotariaRegistro": 0,
@@ -17,5 +16,26 @@
     "comunidadPropietarios": 0,
     "mantenimiento": 0,
     "periodosVacios": 0,
-    "precioAlquiler": 0
+    "precioAlquiler": 0,
+    "itpValues": {
+      "Andalucía": 7,
+      "Aragón": 8,
+      "Asturias": 8,
+      "Baleares": 8,
+      "Canarias": 6.5,
+      "Cantabria": 10,
+      "Castilla-La Mancha": 9,
+      "Castilla y León": 8,
+      "Cataluña": 10,
+      "Comunidad Valenciana": 10,
+      "Extremadura": 8,
+      "Galicia": 10,
+      "La Rioja": 7,
+      "Madrid": 6,
+      "Murcia": 8,
+      "Navarra": 6,
+      "País Vasco": 7
+    }
   }
+  
+  
