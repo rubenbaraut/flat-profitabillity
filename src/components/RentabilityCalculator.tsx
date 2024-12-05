@@ -19,7 +19,7 @@ interface FormData {
   seguroImpago: number;
   comunidadPropietarios: number;
   mantenimiento: number;
-  periodosVacios: number;
+  perdidaAlquiler: number;
   precioAlquiler: number;
   numeroHabitaciones?: number;
   precioHabitacion?: number;
@@ -43,6 +43,7 @@ const RentabilityCalculator: React.FC<RentabilityCalculatorProps> = ({ type }) =
     ocupacionAnual: 100,
     comisionPlataforma: 0,
     itp: 0,
+    perdidaAlquiler: 0,
   });
 
   const [customITP, setCustomITP] = useState<boolean>(false);
@@ -97,7 +98,7 @@ const RentabilityCalculator: React.FC<RentabilityCalculatorProps> = ({ type }) =
 
     const gastosAnuales = formData.ibi + formData.basuras + formData.seguroHogar + 
       formData.seguroVida + formData.seguroImpago + formData.comunidadPropietarios + 
-      formData.mantenimiento;
+      formData.mantenimiento + formData.perdidaAlquiler;
 
     const ingresoNeto = type === 'touristic' 
       ? ingresoAnual * (1 - formData.comisionPlataforma! / 100) 
@@ -119,6 +120,12 @@ const RentabilityCalculator: React.FC<RentabilityCalculatorProps> = ({ type }) =
   }, [formData, type]);
 
   const results = calculateResults;
+
+  const getRentabilidadColor = (rentabilidad: number) => {
+    if (rentabilidad > 7) return 'text-green-600';
+    if (rentabilidad >= 5) return 'text-orange-500';
+    return 'text-red-600';
+  };
 
   const Label = ({ htmlFor, label }: { htmlFor: string; label: string }) => (
     <label htmlFor={htmlFor} className="block text-sm font-semibold text-gray-700">{label}</label>
@@ -512,14 +519,14 @@ const RentabilityCalculator: React.FC<RentabilityCalculatorProps> = ({ type }) =
             </div>
             <div>
               <Label
-                htmlFor="periodosVacios"
-                label="Periodos vacíos (días)"
+                htmlFor="perdidaAlquiler"
+                label="Pérdida por periodos vacíos (€)"
               />
               <input
                 type="number"
-                id="periodosVacios"
-                name="periodosVacios"
-                value={formData.periodosVacios}
+                id="perdidaAlquiler"
+                name="perdidaAlquiler"
+                value={formData.perdidaAlquiler}
                 onChange={handleInputChange}
                 className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 py-1.5 px-3"
               />
@@ -533,7 +540,9 @@ const RentabilityCalculator: React.FC<RentabilityCalculatorProps> = ({ type }) =
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <div>
             <p className="font-semibold">Rentabilidad Bruta:</p>
-            <p className="text-2xl">{results.rentabilidadBruta}%</p>
+            <p className={`text-2xl ${getRentabilidadColor(parseFloat(results.rentabilidadBruta))}`}>
+              {results.rentabilidadBruta}%
+            </p>
           </div>
           <div>
             <p className="font-semibold">Rentabilidad Neta:</p>
