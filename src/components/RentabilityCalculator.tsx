@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import defaultValues from '../data/default-values.json';
+import { Input } from "./ui/input";
+import { ReformaPopup } from './ReformaPopup';
 
 interface FormData {
   direccion: string;
@@ -25,6 +27,16 @@ interface FormData {
   precioHabitacion?: number;
   ocupacionAnual?: number;
   comisionPlataforma?: number;
+  reformaDetails: {
+    electricidad: number;
+    fontaneria: number;
+    ventanas: number;
+    suelo: number;
+    electrodomesticos: number;
+    pintura: number;
+    homeStaging: number;
+    altaSuministros: number;
+  };
 }
 
 const comunidadesAutonomas = Object.keys(defaultValues.itpValues);
@@ -44,6 +56,7 @@ const RentabilityCalculator: React.FC<RentabilityCalculatorProps> = ({ type }) =
     comisionPlataforma: 0,
     itp: 0,
     perdidaAlquiler: 0,
+    reformaDetails: defaultValues.reformaDetails,
   });
 
   const [customITP, setCustomITP] = useState<boolean>(false);
@@ -81,6 +94,14 @@ const RentabilityCalculator: React.FC<RentabilityCalculatorProps> = ({ type }) =
       }));
     }
   }, []);
+
+  const handleReformaChange = (details: FormData['reformaDetails']) => {
+    setFormData(prev => ({
+      ...prev,
+      reformaDetails: details,
+      costeReforma: Object.values(details).reduce((sum, value) => sum + value, 0)
+    }));
+  };
 
   const calculateResults = useMemo(() => {
     const inversionTotal = formData.precioCompra + formData.impuestoITP + 
@@ -376,14 +397,20 @@ const RentabilityCalculator: React.FC<RentabilityCalculatorProps> = ({ type }) =
                 htmlFor="costeReforma"
                 label="Coste reforma (€)"
               />
-              <input
-                type="number"
-                id="costeReforma"
-                name="costeReforma"
-                value={formData.costeReforma}
-                onChange={handleInputChange}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 py-1.5 px-3"
-              />
+              <div className="flex items-center space-x-2">
+                <Input
+                  type="number"
+                  id="costeReforma"
+                  name="costeReforma"
+                  value={formData.costeReforma}
+                  onChange={handleInputChange}
+                  className="mt-1 block w-full"
+                />
+                <ReformaPopup
+                  reformaDetails={formData.reformaDetails}
+                  onReformaChange={handleReformaChange}
+                />
+              </div>
             </div>
             <div>
               <Label

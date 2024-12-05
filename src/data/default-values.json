@@ -35,6 +35,16 @@
       "Murcia": 8,
       "Navarra": 6,
       "País Vasco": 7
+    },
+    "reformaDetails": {
+      "electricidad": 0,
+      "fontaneria": 0,
+      "ventanas": 0,
+      "suelo": 0,
+      "electrodomesticos": 0,
+      "pintura": 0,
+      "homeStaging": 0,
+      "altaSuministros": 0
     }
   }
   
