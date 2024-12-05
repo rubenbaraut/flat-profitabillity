@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import defaultValues from '../data/default-values.json';
 
 interface FormData {
@@ -47,7 +47,7 @@ const RentabilityCalculator: React.FC<RentabilityCalculatorProps> = ({ type }) =
 
   const [customITP, setCustomITP] = useState<boolean>(false);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => {
       const updatedData = { ...prev, [name]: name === 'direccion' || name === 'comunidadAutonoma' ? value : Number(value) };
@@ -64,19 +64,24 @@ const RentabilityCalculator: React.FC<RentabilityCalculatorProps> = ({ type }) =
       
       return updatedData;
     });
-  };
+  }, []);
 
-  const handleITPChange = (e: React.ChangeEvent<HTMLSelectElement | HTMLInputElement>) => {
+  const handleITPChange = useCallback((e: React.ChangeEvent<HTMLSelectElement | HTMLInputElement>) => {
     const value = e.target.value;
     if (value === 'custom') {
       setCustomITP(true);
     } else {
       setCustomITP(false);
-      handleInputChange(e);
+      const numValue = Number(value);
+      setFormData(prev => ({
+        ...prev,
+        itp: numValue,
+        impuestoITP: (prev.precioCompra * numValue) / 100
+      }));
     }
-  };
+  }, []);
 
-  const calculateResults = () => {
+  const calculateResults = useMemo(() => {
     const inversionTotal = formData.precioCompra + formData.impuestoITP + 
       formData.gastosNotariaRegistro + formData.gastosHipoteca + 
       formData.costeReforma + formData.comisionCompra + formData.mobiliario;
@@ -111,9 +116,13 @@ const RentabilityCalculator: React.FC<RentabilityCalculatorProps> = ({ type }) =
       cashflowAnual: cashflowAnual.toFixed(2),
       cashflowMensual: cashflowMensual.toFixed(2),
     };
-  };
+  }, [formData, type]);
 
-  const results = calculateResults();
+  const results = calculateResults;
+
+  const Label = ({ htmlFor, label }: { htmlFor: string; label: string }) => (
+    <label htmlFor={htmlFor} className="block text-sm font-semibold text-gray-700">{label}</label>
+  );
 
   return (
     <div className="container mx-auto px-4">
@@ -123,7 +132,10 @@ const RentabilityCalculator: React.FC<RentabilityCalculatorProps> = ({ type }) =
             <h2 className="text-xl font-semibold mb-4">Datos Generales</h2>
             <div className="space-y-4">
               <div>
-                <label htmlFor="direccion" className="block text-sm font-semibold text-gray-700">Dirección de la vivienda</label>
+                <Label
+                  htmlFor="direccion"
+                  label="Dirección de la vivienda"
+                />
                 <input
                   type="text"
                   id="direccion"
@@ -134,7 +146,10 @@ const RentabilityCalculator: React.FC<RentabilityCalculatorProps> = ({ type }) =
                 />
               </div>
               <div>
-                <label htmlFor="comunidadAutonoma" className="block text-sm font-semibold text-gray-700">Comunidad Autónoma</label>
+                <Label
+                  htmlFor="comunidadAutonoma"
+                  label="Comunidad Autónoma"
+                />
                 <select
                   id="comunidadAutonoma"
                   name="comunidadAutonoma"
@@ -156,7 +171,10 @@ const RentabilityCalculator: React.FC<RentabilityCalculatorProps> = ({ type }) =
             <div className="space-y-4">
               {type === 'traditional' && (
                 <div>
-                  <label htmlFor="precioAlquiler" className="block text-sm font-semibold text-gray-700">Precio alquiler (€/mes)</label>
+                  <Label
+                    htmlFor="precioAlquiler"
+                    label="Precio alquiler (€/mes)"
+                  />
                   <input
                     type="number"
                     id="precioAlquiler"
@@ -170,7 +188,10 @@ const RentabilityCalculator: React.FC<RentabilityCalculatorProps> = ({ type }) =
               {type === 'rooms' && (
                 <>
                   <div>
-                    <label htmlFor="numeroHabitaciones" className="block text-sm font-semibold text-gray-700">Número de habitaciones</label>
+                    <Label
+                      htmlFor="numeroHabitaciones"
+                      label="Número de habitaciones"
+                    />
                     <input
                       type="number"
                       id="numeroHabitaciones"
@@ -181,7 +202,10 @@ const RentabilityCalculator: React.FC<RentabilityCalculatorProps> = ({ type }) =
                     />
                   </div>
                   <div>
-                    <label htmlFor="precioHabitacion" className="block text-sm font-semibold text-gray-700">Precio por habitación (€/mes)</label>
+                    <Label
+                      htmlFor="precioHabitacion"
+                      label="Precio por habitación (€/mes)"
+                    />
                     <input
                       type="number"
                       id="precioHabitacion"
@@ -196,7 +220,10 @@ const RentabilityCalculator: React.FC<RentabilityCalculatorProps> = ({ type }) =
               {type === 'touristic' && (
                 <>
                   <div>
-                    <label htmlFor="precioAlquiler" className="block text-sm font-semibold text-gray-700">Precio alquiler (€/noche)</label>
+                    <Label
+                      htmlFor="precioAlquiler"
+                      label="Precio alquiler (€/noche)"
+                    />
                     <input
                       type="number"
                       id="precioAlquiler"
@@ -207,7 +234,10 @@ const RentabilityCalculator: React.FC<RentabilityCalculatorProps> = ({ type }) =
                     />
                   </div>
                   <div>
-                    <label htmlFor="ocupacionAnual" className="block text-sm font-semibold text-gray-700">Ocupación anual (%)</label>
+                    <Label
+                      htmlFor="ocupacionAnual"
+                      label="Ocupación anual (%)"
+                    />
                     <input
                       type="number"
                       id="ocupacionAnual"
@@ -218,7 +248,10 @@ const RentabilityCalculator: React.FC<RentabilityCalculatorProps> = ({ type }) =
                     />
                   </div>
                   <div>
-                    <label htmlFor="comisionPlataforma" className="block text-sm font-semibold text-gray-700">Comisión plataforma (%)</label>
+                    <Label
+                      htmlFor="comisionPlataforma"
+                      label="Comisión plataforma (%)"
+                    />
                     <input
                       type="number"
                       id="comisionPlataforma"
@@ -238,7 +271,10 @@ const RentabilityCalculator: React.FC<RentabilityCalculatorProps> = ({ type }) =
           <h2 className="text-xl font-semibold mb-4">Gastos Compra Venta</h2>
           <div className="space-y-4">
             <div>
-              <label htmlFor="precioCompra" className="block text-sm font-semibold text-gray-700">Precio de compra (€)</label>
+              <Label
+                htmlFor="precioCompra"
+                label="Precio de compra (€)"
+              />
               <input
                 type="number"
                 id="precioCompra"
@@ -249,7 +285,10 @@ const RentabilityCalculator: React.FC<RentabilityCalculatorProps> = ({ type }) =
               />
             </div>
             <div>
-              <label htmlFor="itp" className="block text-sm font-semibold text-gray-700">ITP (%)</label>
+              <Label
+                htmlFor="itp"
+                label="ITP (%)"
+              />
               <div className="flex items-center space-x-2">
                 <select
                   id="itp"
@@ -268,7 +307,14 @@ const RentabilityCalculator: React.FC<RentabilityCalculatorProps> = ({ type }) =
                     type="number"
                     name="itp"
                     value={formData.itp}
-                    onChange={handleInputChange}
+                    onChange={(e) => {
+                      const value = Number(e.target.value);
+                      setFormData(prev => ({
+                        ...prev,
+                        itp: value,
+                        impuestoITP: (prev.precioCompra * value) / 100
+                      }));
+                    }}
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 py-1.5 px-3"
                     placeholder="ITP personalizado"
                     step="0.1"
@@ -277,7 +323,10 @@ const RentabilityCalculator: React.FC<RentabilityCalculatorProps> = ({ type }) =
               </div>
             </div>
             <div>
-              <label htmlFor="impuestoITP" className="block text-sm font-semibold text-gray-700">Impuesto ITP (€)</label>
+              <Label
+                htmlFor="impuestoITP"
+                label="Impuesto ITP (€)"
+              />
               <input
                 type="number"
                 id="impuestoITP"
@@ -288,7 +337,10 @@ const RentabilityCalculator: React.FC<RentabilityCalculatorProps> = ({ type }) =
               />
             </div>
             <div>
-              <label htmlFor="gastosNotariaRegistro" className="block text-sm font-semibold text-gray-700">Gastos Notaría, Registro (€)</label>
+              <Label
+                htmlFor="gastosNotariaRegistro"
+                label="Gastos Notaría, Registro (€)"
+              />
               <input
                 type="number"
                 id="gastosNotariaRegistro"
@@ -299,7 +351,10 @@ const RentabilityCalculator: React.FC<RentabilityCalculatorProps> = ({ type }) =
               />
             </div>
             <div>
-              <label htmlFor="gastosHipoteca" className="block text-sm font-semibold text-gray-700">Gastos hipoteca (€)</label>
+              <Label
+                htmlFor="gastosHipoteca"
+                label="Gastos hipoteca (€)"
+              />
               <input
                 type="number"
                 id="gastosHipoteca"
@@ -310,7 +365,10 @@ const RentabilityCalculator: React.FC<RentabilityCalculatorProps> = ({ type }) =
               />
             </div>
             <div>
-              <label htmlFor="costeReforma" className="block text-sm font-semibold text-gray-700">Coste reforma (€)</label>
+              <Label
+                htmlFor="costeReforma"
+                label="Coste reforma (€)"
+              />
               <input
                 type="number"
                 id="costeReforma"
@@ -321,7 +379,10 @@ const RentabilityCalculator: React.FC<RentabilityCalculatorProps> = ({ type }) =
               />
             </div>
             <div>
-              <label htmlFor="comisionCompra" className="block text-sm font-semibold text-gray-700">Comisión compra (€)</label>
+              <Label
+                htmlFor="comisionCompra"
+                label="Comisión compra (€)"
+              />
               <input
                 type="number"
                 id="comisionCompra"
@@ -332,7 +393,10 @@ const RentabilityCalculator: React.FC<RentabilityCalculatorProps> = ({ type }) =
               />
             </div>
             <div>
-              <label htmlFor="mobiliario" className="block text-sm font-semibold text-gray-700">Mobiliario (€)</label>
+              <Label
+                htmlFor="mobiliario"
+                label="Mobiliario (€)"
+              />
               <input
                 type="number"
                 id="mobiliario"
@@ -349,7 +413,10 @@ const RentabilityCalculator: React.FC<RentabilityCalculatorProps> = ({ type }) =
           <h2 className="text-xl font-semibold mb-4">Gastos Recurrentes</h2>
           <div className="space-y-4">
             <div>
-              <label htmlFor="ibi" className="block text-sm font-semibold text-gray-700">IBI (€)</label>
+              <Label
+                htmlFor="ibi"
+                label="IBI (€)"
+              />
               <input
                 type="number"
                 id="ibi"
@@ -360,7 +427,10 @@ const RentabilityCalculator: React.FC<RentabilityCalculatorProps> = ({ type }) =
               />
             </div>
             <div>
-              <label htmlFor="basuras" className="block text-sm font-semibold text-gray-700">Basuras (€)</label>
+              <Label
+                htmlFor="basuras"
+                label="Basuras (€)"
+              />
               <input
                 type="number"
                 id="basuras"
@@ -371,7 +441,10 @@ const RentabilityCalculator: React.FC<RentabilityCalculatorProps> = ({ type }) =
               />
             </div>
             <div>
-              <label htmlFor="seguroHogar" className="block text-sm font-semibold text-gray-700">Seguro Hogar (€)</label>
+              <Label
+                htmlFor="seguroHogar"
+                label="Seguro Hogar (€)"
+              />
               <input
                 type="number"
                 id="seguroHogar"
@@ -382,7 +455,10 @@ const RentabilityCalculator: React.FC<RentabilityCalculatorProps> = ({ type }) =
               />
             </div>
             <div>
-              <label htmlFor="seguroVida" className="block text-sm font-semibold text-gray-700">Seguro Vida (€)</label>
+              <Label
+                htmlFor="seguroVida"
+                label="Seguro Vida (€)"
+              />
               <input
                 type="number"
                 id="seguroVida"
@@ -393,7 +469,10 @@ const RentabilityCalculator: React.FC<RentabilityCalculatorProps> = ({ type }) =
               />
             </div>
             <div>
-              <label htmlFor="seguroImpago" className="block text-sm font-semibold text-gray-700">Seguro Impago (€)</label>
+              <Label
+                htmlFor="seguroImpago"
+                label="Seguro Impago (€)"
+              />
               <input
                 type="number"
                 id="seguroImpago"
@@ -404,7 +483,10 @@ const RentabilityCalculator: React.FC<RentabilityCalculatorProps> = ({ type }) =
               />
             </div>
             <div>
-              <label htmlFor="comunidadPropietarios" className="block text-sm font-semibold text-gray-700">Comunidad de propietarios (€)</label>
+              <Label
+                htmlFor="comunidadPropietarios"
+                label="Comunidad de propietarios (€)"
+              />
               <input
                 type="number"
                 id="comunidadPropietarios"
@@ -415,7 +497,10 @@ const RentabilityCalculator: React.FC<RentabilityCalculatorProps> = ({ type }) =
               />
             </div>
             <div>
-              <label htmlFor="mantenimiento" className="block text-sm font-semibold text-gray-700">Mantenimiento (€)</label>
+              <Label
+                htmlFor="mantenimiento"
+                label="Mantenimiento (€)"
+              />
               <input
                 type="number"
                 id="mantenimiento"
@@ -426,7 +511,10 @@ const RentabilityCalculator: React.FC<RentabilityCalculatorProps> = ({ type }) =
               />
             </div>
             <div>
-              <label htmlFor="periodosVacios" className="block text-sm font-semibold text-gray-700">Periodos vacíos (días)</label>
+              <Label
+                htmlFor="periodosVacios"
+                label="Periodos vacíos (días)"
+              />
               <input
                 type="number"
                 id="periodosVacios"
