@@ -1,7 +1,5 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import defaultValues from '../data/default-values.json';
-import { Input } from "./ui/input";
-import { ReformaPopup } from './ReformaPopup';
+import React, { useState, useMemo, useCallback } from 'react';
+import defaultValues from '../../public/data/default-values.json';
 
 interface FormData {
   direccion: string;
@@ -27,16 +25,6 @@ interface FormData {
   precioHabitacion?: number;
   ocupacionAnual?: number;
   comisionPlataforma?: number;
-  reformaDetails: {
-    electricidad: number;
-    fontaneria: number;
-    ventanas: number;
-    suelo: number;
-    electrodomesticos: number;
-    pintura: number;
-    homeStaging: number;
-    altaSuministros: number;
-  };
 }
 
 const comunidadesAutonomas = Object.keys(defaultValues.itpValues);
@@ -56,10 +44,24 @@ const RentabilityCalculator: React.FC<RentabilityCalculatorProps> = ({ type }) =
     comisionPlataforma: 0,
     itp: 0,
     perdidaAlquiler: 0,
-    reformaDetails: defaultValues.reformaDetails,
   });
 
   const [customITP, setCustomITP] = useState<boolean>(false);
+  const [showReformaDetails, setShowReformaDetails] = useState(false);
+  const [reformaDetails, setReformaDetails] = useState({
+    materiales: 0,
+    manoDeObra: 0,
+    otros: 0,
+    costeElectricidad: 0,
+    costeFontaneria: 0,
+    costeAlbanileria: 0,
+    costePuertas: 0,
+    costeVentanas: 0,
+    costeSuelo: 0,
+    costePintura: 0,
+    costeHomeStaging: 0,
+    costeAltaSuministros: 0
+  });
 
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -95,11 +97,15 @@ const RentabilityCalculator: React.FC<RentabilityCalculatorProps> = ({ type }) =
     }
   }, []);
 
-  const handleReformaChange = (details: FormData['reformaDetails']) => {
+  const handleReformaDetailsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setReformaDetails(prev => ({
+      ...prev,
+      [name]: Number(value)
+    }));
     setFormData(prev => ({
       ...prev,
-      reformaDetails: details,
-      costeReforma: Object.values(details).reduce((sum, value) => sum + value, 0)
+      costeReforma: Object.values(reformaDetails).reduce((a, b) => a + b, 0)
     }));
   };
 
@@ -141,12 +147,6 @@ const RentabilityCalculator: React.FC<RentabilityCalculatorProps> = ({ type }) =
   }, [formData, type]);
 
   const results = calculateResults;
-
-  const getRentabilidadColor = (rentabilidad: number) => {
-    if (rentabilidad > 7) return 'text-green-600';
-    if (rentabilidad >= 5) return 'text-orange-500';
-    return 'text-red-600';
-  };
 
   const Label = ({ htmlFor, label }: { htmlFor: string; label: string }) => (
     <label htmlFor={htmlFor} className="block text-sm font-semibold text-gray-700">{label}</label>
@@ -193,7 +193,6 @@ const RentabilityCalculator: React.FC<RentabilityCalculatorProps> = ({ type }) =
               </div>
             </div>
           </section>
-
           <section className="bg-gray-100 p-4 rounded-lg border border-gray-200">
             <h2 className="text-xl font-semibold mb-4">Ingresos</h2>
             <div className="space-y-4">
@@ -398,18 +397,20 @@ const RentabilityCalculator: React.FC<RentabilityCalculatorProps> = ({ type }) =
                 label="Coste reforma (€)"
               />
               <div className="flex items-center space-x-2">
-                <Input
+                <input
                   type="number"
                   id="costeReforma"
                   name="costeReforma"
                   value={formData.costeReforma}
                   onChange={handleInputChange}
-                  className="mt-1 block w-full"
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 py-1.5 px-3"
                 />
-                <ReformaPopup
-                  reformaDetails={formData.reformaDetails}
-                  onReformaChange={handleReformaChange}
-                />
+                <button
+                  onClick={() => setShowReformaDetails(!showReformaDetails)}
+                  className="px-4 py-2 text-sm transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-100 focus:ring-gray-400 bg-gray-700 text-white hover:bg-gray-600 rounded-md"
+                >
+                  Desglosar
+                </button>
               </div>
             </div>
             <div>
@@ -567,9 +568,7 @@ const RentabilityCalculator: React.FC<RentabilityCalculatorProps> = ({ type }) =
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <div>
             <p className="font-semibold">Rentabilidad Bruta:</p>
-            <p className={`text-2xl ${getRentabilidadColor(parseFloat(results.rentabilidadBruta))}`}>
-              {results.rentabilidadBruta}%
-            </p>
+            <p className="text-2xl">{results.rentabilidadBruta}%</p>
           </div>
           <div>
             <p className="font-semibold">Rentabilidad Neta:</p>
@@ -589,6 +588,156 @@ const RentabilityCalculator: React.FC<RentabilityCalculatorProps> = ({ type }) =
           </div>
         </div>
       </section>
+      {showReformaDetails && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center">
+          <div className="bg-white p-5 rounded-lg shadow-xl max-w-2xl w-full">
+            <h3 className="text-lg font-bold mb-4">Desglose de costes de reforma</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="materiales" label="Materiales (€)" />
+                <input
+                  type="number"
+                  id="materiales"
+                  name="materiales"
+                  value={reformaDetails.materiales}
+                  onChange={handleReformaDetailsChange}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 py-1.5 px-3"
+                />
+              </div>
+              <div>
+                <Label htmlFor="manoDeObra" label="Mano de obra (€)" />
+                <input
+                  type="number"
+                  id="manoDeObra"
+                  name="manoDeObra"
+                  value={reformaDetails.manoDeObra}
+                  onChange={handleReformaDetailsChange}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 py-1.5 px-3"
+                />
+              </div>
+              <div>
+                <Label htmlFor="costeElectricidad" label="Coste electricidad (€)" />
+                <input
+                  type="number"
+                  id="costeElectricidad"
+                  name="costeElectricidad"
+                  value={reformaDetails.costeElectricidad}
+                  onChange={handleReformaDetailsChange}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 py-1.5 px-3"
+                />
+              </div>
+              <div>
+                <Label htmlFor="costeFontaneria" label="Coste fontanería (€)" />
+                <input
+                  type="number"
+                  id="costeFontaneria"
+                  name="costeFontaneria"
+                  value={reformaDetails.costeFontaneria}
+                  onChange={handleReformaDetailsChange}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 py-1.5 px-3"
+                />
+              </div>
+              <div>
+                <Label htmlFor="costeAlbanileria" label="Coste albañilería (€)" />
+                <input
+                  type="number"
+                  id="costeAlbanileria"
+                  name="costeAlbanileria"
+                  value={reformaDetails.costeAlbanileria}
+                  onChange={handleReformaDetailsChange}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 py-1.5 px-3"
+                />
+              </div>
+              <div>
+                <Label htmlFor="costePuertas" label="Coste puertas (€)" />
+                <input
+                  type="number"
+                  id="costePuertas"
+                  name="costePuertas"
+                  value={reformaDetails.costePuertas}
+                  onChange={handleReformaDetailsChange}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 py-1.5 px-3"
+                />
+              </div>
+              <div>
+                <Label htmlFor="costeVentanas" label="Coste ventanas (€)" />
+                <input
+                  type="number"
+                  id="costeVentanas"
+                  name="costeVentanas"
+                  value={reformaDetails.costeVentanas}
+                  onChange={handleReformaDetailsChange}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 py-1.5 px-3"
+                />
+              </div>
+              <div>
+                <Label htmlFor="costeSuelo" label="Coste suelo (€)" />
+                <input
+                  type="number"
+                  id="costeSuelo"
+                  name="costeSuelo"
+                  value={reformaDetails.costeSuelo}
+                  onChange={handleReformaDetailsChange}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 py-1.5 px-3"
+                />
+              </div>
+              <div>
+                <Label htmlFor="costePintura" label="Coste pintura (€)" />
+                <input
+                  type="number"
+                  id="costePintura"
+                  name="costePintura"
+                  value={reformaDetails.costePintura}
+                  onChange={handleReformaDetailsChange}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 py-1.5 px-3"
+                />
+              </div>
+              <div>
+                <Label htmlFor="costeHomeStaging" label="Coste home-staging (€)" />
+                <input
+                  type="number"
+                  id="costeHomeStaging"
+                  name="costeHomeStaging"
+                  value={reformaDetails.costeHomeStaging}
+                  onChange={handleReformaDetailsChange}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 py-1.5 px-3"
+                />
+              </div>
+              <div>
+                <Label htmlFor="costeAltaSuministros" label="Coste alta de suministros (€)" />
+                <input
+                  type="number"
+                  id="costeAltaSuministros"
+                  name="costeAltaSuministros"
+                  value={reformaDetails.costeAltaSuministros}
+                  onChange={handleReformaDetailsChange}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 py-1.5 px-3"
+                />
+              </div>
+              <div>
+                <Label htmlFor="otros" label="Otros gastos (€)" />
+                <input
+                  type="number"
+                  id="otros"
+                  name="otros"
+                  value={reformaDetails.otros}
+                  onChange={handleReformaDetailsChange}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 py-1.5 px-3"
+                />
+              </div>
+            </div>
+            <div className="mt-4 flex justify-between items-center">
+              <p className="font-semibold">Total: {formData.costeReforma}€</p>
+              <button
+                onClick={() => setShowReformaDetails(false)}
+                className="px-4 py-2 bg-gray-700 text-white rounded hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-50"
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
