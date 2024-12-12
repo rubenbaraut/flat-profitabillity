@@ -1,9 +1,22 @@
-import React, { useState } from 'react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import React, { useState, useEffect } from 'react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs"
 import RentabilityCalculator from "./RentabilityCalculator"
+import { Button } from "./ui/button"
 
-export function RentabilityTabs() {
+interface RentabilityTabsProps {
+  initialData?: any;
+  onSave: (formData: any) => void;
+}
+
+export function RentabilityTabs({ initialData, onSave }: RentabilityTabsProps) {
   const [activeTab, setActiveTab] = useState('traditional');
+  const [formData, setFormData] = useState({}); // Added state for form data
+
+  useEffect(() => {
+    if (initialData) {
+      setFormData(initialData);
+    }
+  }, [initialData]);
 
   return (
     <div className="space-y-6 bg-gray-100 p-6 rounded-lg shadow-md">

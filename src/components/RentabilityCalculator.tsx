@@ -1,5 +1,10 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import defaultValues from '../../public/data/default-values.json';
+import { ReformaPopup } from './ReformaPopup';
+import { SaveCalculationForm } from './SaveCalculationForm';
+import { Button } from './ui/button';
+import { Label } from './ui/label';
+import { Input } from './ui/input';
 
 interface FormData {
   direccion: string;
@@ -25,25 +30,33 @@ interface FormData {
   precioHabitacion?: number;
   ocupacionAnual?: number;
   comisionPlataforma?: number;
+  name?: string;
 }
 
 const comunidadesAutonomas = Object.keys(defaultValues.itpValues);
 
 interface RentabilityCalculatorProps {
   type: 'traditional' | 'rooms' | 'touristic';
+  initialData?: FormData;
+  onSave: (formData: FormData) => void;
 }
 
 const itpOptions = [4, 5, 6, 7, 8, 9, 10, 11, 12];
 
-const RentabilityCalculator: React.FC<RentabilityCalculatorProps> = ({ type }) => {
-  const [formData, setFormData] = useState<FormData>({
-    ...defaultValues,
-    numeroHabitaciones: 1,
-    precioHabitacion: 0,
-    ocupacionAnual: 100,
-    comisionPlataforma: 0,
-    itp: 0,
-    perdidaAlquiler: 0,
+const RentabilityCalculator: React.FC<RentabilityCalculatorProps> = ({ type, initialData, onSave }) => {
+  const [formData, setFormData] = useState<FormData>(() => {
+    if (initialData) {
+      return { ...defaultValues, ...initialData };
+    }
+    return {
+      ...defaultValues,
+      numeroHabitaciones: 1,
+      precioHabitacion: 0,
+      ocupacionAnual: 100,
+      comisionPlataforma: 0,
+      itp: 0,
+      perdidaAlquiler: 0,
+    };
   });
 
   const [customITP, setCustomITP] = useState<boolean>(false);
@@ -62,11 +75,18 @@ const RentabilityCalculator: React.FC<RentabilityCalculatorProps> = ({ type }) =
     costeHomeStaging: 0,
     costeAltaSuministros: 0
   });
+  const [showSaveForm, setShowSaveForm] = useState(false);
+
+  useEffect(() => {
+    if (initialData) {
+      setFormData(prevData => ({ ...prevData, ...initialData }));
+    }
+  }, [initialData]);
 
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => {
-      const updatedData = { ...prev, [name]: name === 'direccion' || name === 'comunidadAutonoma' ? value : Number(value) };
+      const updatedData = { ...prev, [name]: name === 'direccion' || name === 'comunidadAutonoma' ? value : value === '' ? '' : Number(value) };
       
       if (name === 'comunidadAutonoma') {
         const newITP = defaultValues.itpValues[value as keyof typeof defaultValues.itpValues] || 0;
@@ -97,15 +117,11 @@ const RentabilityCalculator: React.FC<RentabilityCalculatorProps> = ({ type }) =
     }
   }, []);
 
-  const handleReformaDetailsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setReformaDetails(prev => ({
-      ...prev,
-      [name]: Number(value)
-    }));
+  const handleReformaDetailsChange = (newDetails: typeof reformaDetails) => {
+    setReformaDetails(newDetails);
     setFormData(prev => ({
       ...prev,
-      costeReforma: Object.values(reformaDetails).reduce((a, b) => a + b, 0)
+      costeReforma: Object.values(newDetails).reduce((a, b) => a + b, 0)
     }));
   };
 
@@ -138,11 +154,11 @@ const RentabilityCalculator: React.FC<RentabilityCalculatorProps> = ({ type }) =
     const cashflowMensual = cashflowAnual / 12;
 
     return {
-      rentabilidadBruta: rentabilidadBruta.toFixed(2),
-      rentabilidadNeta: rentabilidadNeta.toFixed(2),
-      roce: roce.toFixed(2),
-      cashflowAnual: cashflowAnual.toFixed(2),
-      cashflowMensual: cashflowMensual.toFixed(2),
+      rentabilidadBruta: isNaN(rentabilidadBruta) ? "0.00" : rentabilidadBruta.toFixed(2),
+      rentabilidadNeta: isNaN(rentabilidadNeta) ? "0.00" : rentabilidadNeta.toFixed(2),
+      roce: isNaN(roce) ? "0.00" : roce.toFixed(2),
+      cashflowAnual: isNaN(cashflowAnual) ? "0.00" : cashflowAnual.toFixed(2),
+      cashflowMensual: isNaN(cashflowMensual) ? "0.00" : cashflowMensual.toFixed(2),
     };
   }, [formData, type]);
 
@@ -151,6 +167,24 @@ const RentabilityCalculator: React.FC<RentabilityCalculatorProps> = ({ type }) =
   const Label = ({ htmlFor, label }: { htmlFor: string; label: string }) => (
     <label htmlFor={htmlFor} className="block text-sm font-semibold text-gray-700">{label}</label>
   );
+
+  const handleSaveCalculation = (name: string) => {
+    onSave({ ...formData, name });
+    setShowSaveForm(false);
+  };
+
+  const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+    if (e.target.value === '0') {
+      e.target.value = '';
+    }
+  };
+
+  const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    if (e.target.value === '') {
+      e.target.value = '0';
+      handleInputChange(e as unknown as React.ChangeEvent<HTMLInputElement>);
+    }
+  };
 
   return (
     <div className="container mx-auto px-4">
@@ -164,13 +198,12 @@ const RentabilityCalculator: React.FC<RentabilityCalculatorProps> = ({ type }) =
                   htmlFor="direccion"
                   label="Dirección de la vivienda"
                 />
-                <input
+                <Input
                   type="text"
                   id="direccion"
                   name="direccion"
                   value={formData.direccion}
                   onChange={handleInputChange}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 py-1.5 px-3"
                 />
               </div>
               <div>
@@ -183,7 +216,7 @@ const RentabilityCalculator: React.FC<RentabilityCalculatorProps> = ({ type }) =
                   name="comunidadAutonoma"
                   value={formData.comunidadAutonoma}
                   onChange={handleInputChange}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 py-1.5 px-3"
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <option value="">Seleccione una comunidad</option>
                   {comunidadesAutonomas.map(ca => (
@@ -202,13 +235,14 @@ const RentabilityCalculator: React.FC<RentabilityCalculatorProps> = ({ type }) =
                     htmlFor="precioAlquiler"
                     label="Precio alquiler (€/mes)"
                   />
-                  <input
+                  <Input
                     type="number"
                     id="precioAlquiler"
                     name="precioAlquiler"
                     value={formData.precioAlquiler}
                     onChange={handleInputChange}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 py-1.5 px-3"
+                    onFocus={handleFocus}
+                    onBlur={handleBlur}
                   />
                 </div>
               )}
@@ -219,13 +253,14 @@ const RentabilityCalculator: React.FC<RentabilityCalculatorProps> = ({ type }) =
                       htmlFor="numeroHabitaciones"
                       label="Número de habitaciones"
                     />
-                    <input
+                    <Input
                       type="number"
                       id="numeroHabitaciones"
                       name="numeroHabitaciones"
                       value={formData.numeroHabitaciones}
                       onChange={handleInputChange}
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 py-1.5 px-3"
+                      onFocus={handleFocus}
+                      onBlur={handleBlur}
                     />
                   </div>
                   <div>
@@ -233,13 +268,14 @@ const RentabilityCalculator: React.FC<RentabilityCalculatorProps> = ({ type }) =
                       htmlFor="precioHabitacion"
                       label="Precio por habitación (€/mes)"
                     />
-                    <input
+                    <Input
                       type="number"
                       id="precioHabitacion"
                       name="precioHabitacion"
                       value={formData.precioHabitacion}
                       onChange={handleInputChange}
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 py-1.5 px-3"
+                      onFocus={handleFocus}
+                      onBlur={handleBlur}
                     />
                   </div>
                 </>
@@ -251,13 +287,14 @@ const RentabilityCalculator: React.FC<RentabilityCalculatorProps> = ({ type }) =
                       htmlFor="precioAlquiler"
                       label="Precio alquiler (€/noche)"
                     />
-                    <input
+                    <Input
                       type="number"
                       id="precioAlquiler"
                       name="precioAlquiler"
                       value={formData.precioAlquiler}
                       onChange={handleInputChange}
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 py-1.5 px-3"
+                      onFocus={handleFocus}
+                      onBlur={handleBlur}
                     />
                   </div>
                   <div>
@@ -265,13 +302,14 @@ const RentabilityCalculator: React.FC<RentabilityCalculatorProps> = ({ type }) =
                       htmlFor="ocupacionAnual"
                       label="Ocupación anual (%)"
                     />
-                    <input
+                    <Input
                       type="number"
                       id="ocupacionAnual"
                       name="ocupacionAnual"
                       value={formData.ocupacionAnual}
                       onChange={handleInputChange}
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 py-1.5 px-3"
+                      onFocus={handleFocus}
+                      onBlur={handleBlur}
                     />
                   </div>
                   <div>
@@ -279,13 +317,14 @@ const RentabilityCalculator: React.FC<RentabilityCalculatorProps> = ({ type }) =
                       htmlFor="comisionPlataforma"
                       label="Comisión plataforma (%)"
                     />
-                    <input
+                    <Input
                       type="number"
                       id="comisionPlataforma"
                       name="comisionPlataforma"
                       value={formData.comisionPlataforma}
                       onChange={handleInputChange}
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 py-1.5 px-3"
+                      onFocus={handleFocus}
+                      onBlur={handleBlur}
                     />
                   </div>
                 </>
@@ -302,13 +341,14 @@ const RentabilityCalculator: React.FC<RentabilityCalculatorProps> = ({ type }) =
                 htmlFor="precioCompra"
                 label="Precio de compra (€)"
               />
-              <input
+              <Input
                 type="number"
                 id="precioCompra"
                 name="precioCompra"
                 value={formData.precioCompra}
                 onChange={handleInputChange}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 py-1.5 px-3"
+                onFocus={handleFocus}
+                onBlur={handleBlur}
               />
             </div>
             <div>
@@ -322,7 +362,7 @@ const RentabilityCalculator: React.FC<RentabilityCalculatorProps> = ({ type }) =
                   name="itp"
                   value={customITP ? 'custom' : formData.itp}
                   onChange={handleITPChange}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 py-1.5 px-3"
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {itpOptions.map(option => (
                     <option key={option} value={option}>{option}%</option>
@@ -330,7 +370,7 @@ const RentabilityCalculator: React.FC<RentabilityCalculatorProps> = ({ type }) =
                   <option value="custom">Personalizado</option>
                 </select>
                 {customITP && (
-                  <input
+                  <Input
                     type="number"
                     name="itp"
                     value={formData.itp}
@@ -342,9 +382,10 @@ const RentabilityCalculator: React.FC<RentabilityCalculatorProps> = ({ type }) =
                         impuestoITP: (prev.precioCompra * value) / 100
                       }));
                     }}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 py-1.5 px-3"
                     placeholder="ITP personalizado"
                     step="0.1"
+                    onFocus={handleFocus}
+                    onBlur={handleBlur}
                   />
                 )}
               </div>
@@ -354,13 +395,12 @@ const RentabilityCalculator: React.FC<RentabilityCalculatorProps> = ({ type }) =
                 htmlFor="impuestoITP"
                 label="Impuesto ITP (€)"
               />
-              <input
+              <Input
                 type="number"
                 id="impuestoITP"
                 name="impuestoITP"
                 value={formData.impuestoITP}
                 readOnly
-                className="mt-1 block w-full rounded-md border-gray-300 bg-gray-100 shadow-sm py-1.5 px-3"
               />
             </div>
             <div>
@@ -368,13 +408,14 @@ const RentabilityCalculator: React.FC<RentabilityCalculatorProps> = ({ type }) =
                 htmlFor="gastosNotariaRegistro"
                 label="Gastos Notaría, Registro (€)"
               />
-              <input
+              <Input
                 type="number"
                 id="gastosNotariaRegistro"
                 name="gastosNotariaRegistro"
                 value={formData.gastosNotariaRegistro}
                 onChange={handleInputChange}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 py-1.5 px-3"
+                onFocus={handleFocus}
+                onBlur={handleBlur}
               />
             </div>
             <div>
@@ -382,13 +423,14 @@ const RentabilityCalculator: React.FC<RentabilityCalculatorProps> = ({ type }) =
                 htmlFor="gastosHipoteca"
                 label="Gastos hipoteca (€)"
               />
-              <input
+              <Input
                 type="number"
                 id="gastosHipoteca"
                 name="gastosHipoteca"
                 value={formData.gastosHipoteca}
                 onChange={handleInputChange}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 py-1.5 px-3"
+                onFocus={handleFocus}
+                onBlur={handleBlur}
               />
             </div>
             <div>
@@ -397,20 +439,22 @@ const RentabilityCalculator: React.FC<RentabilityCalculatorProps> = ({ type }) =
                 label="Coste reforma (€)"
               />
               <div className="flex items-center space-x-2">
-                <input
+                <Input
                   type="number"
                   id="costeReforma"
                   name="costeReforma"
                   value={formData.costeReforma}
                   onChange={handleInputChange}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 py-1.5 px-3"
+                  onFocus={handleFocus}
+                  onBlur={handleBlur}
+                  className="flex-grow"
                 />
-                <button
-                  onClick={() => setShowReformaDetails(!showReformaDetails)}
-                  className="px-4 py-2 text-sm transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-100 focus:ring-gray-400 bg-gray-700 text-white hover:bg-gray-600 rounded-md"
+                <Button
+                  onClick={() => setShowReformaDetails(true)}
+                  className="whitespace-nowrap bg-gray-700 text-white hover:bg-gray-600 transition-colors duration-200"
                 >
                   Desglosar
-                </button>
+                </Button>
               </div>
             </div>
             <div>
@@ -418,13 +462,14 @@ const RentabilityCalculator: React.FC<RentabilityCalculatorProps> = ({ type }) =
                 htmlFor="comisionCompra"
                 label="Comisión compra (€)"
               />
-              <input
+              <Input
                 type="number"
                 id="comisionCompra"
                 name="comisionCompra"
                 value={formData.comisionCompra}
                 onChange={handleInputChange}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 py-1.5 px-3"
+                onFocus={handleFocus}
+                onBlur={handleBlur}
               />
             </div>
             <div>
@@ -432,13 +477,14 @@ const RentabilityCalculator: React.FC<RentabilityCalculatorProps> = ({ type }) =
                 htmlFor="mobiliario"
                 label="Mobiliario (€)"
               />
-              <input
+              <Input
                 type="number"
                 id="mobiliario"
                 name="mobiliario"
                 value={formData.mobiliario}
                 onChange={handleInputChange}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 py-1.5 px-3"
+                onFocus={handleFocus}
+                onBlur={handleBlur}
               />
             </div>
           </div>
@@ -452,13 +498,14 @@ const RentabilityCalculator: React.FC<RentabilityCalculatorProps> = ({ type }) =
                 htmlFor="ibi"
                 label="IBI (€)"
               />
-              <input
+              <Input
                 type="number"
                 id="ibi"
                 name="ibi"
                 value={formData.ibi}
                 onChange={handleInputChange}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 py-1.5 px-3"
+                onFocus={handleFocus}
+                onBlur={handleBlur}
               />
             </div>
             <div>
@@ -466,13 +513,14 @@ const RentabilityCalculator: React.FC<RentabilityCalculatorProps> = ({ type }) =
                 htmlFor="basuras"
                 label="Basuras (€)"
               />
-              <input
+              <Input
                 type="number"
                 id="basuras"
                 name="basuras"
                 value={formData.basuras}
                 onChange={handleInputChange}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 py-1.5 px-3"
+                onFocus={handleFocus}
+                onBlur={handleBlur}
               />
             </div>
             <div>
@@ -480,13 +528,14 @@ const RentabilityCalculator: React.FC<RentabilityCalculatorProps> = ({ type }) =
                 htmlFor="seguroHogar"
                 label="Seguro Hogar (€)"
               />
-              <input
+              <Input
                 type="number"
                 id="seguroHogar"
                 name="seguroHogar"
                 value={formData.seguroHogar}
                 onChange={handleInputChange}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 py-1.5 px-3"
+                onFocus={handleFocus}
+                onBlur={handleBlur}
               />
             </div>
             <div>
@@ -494,13 +543,14 @@ const RentabilityCalculator: React.FC<RentabilityCalculatorProps> = ({ type }) =
                 htmlFor="seguroVida"
                 label="Seguro Vida (€)"
               />
-              <input
+              <Input
                 type="number"
                 id="seguroVida"
                 name="seguroVida"
                 value={formData.seguroVida}
                 onChange={handleInputChange}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 py-1.5 px-3"
+                onFocus={handleFocus}
+                onBlur={handleBlur}
               />
             </div>
             <div>
@@ -508,13 +558,14 @@ const RentabilityCalculator: React.FC<RentabilityCalculatorProps> = ({ type }) =
                 htmlFor="seguroImpago"
                 label="Seguro Impago (€)"
               />
-              <input
+              <Input
                 type="number"
                 id="seguroImpago"
                 name="seguroImpago"
                 value={formData.seguroImpago}
                 onChange={handleInputChange}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 py-1.5 px-3"
+                onFocus={handleFocus}
+                onBlur={handleBlur}
               />
             </div>
             <div>
@@ -522,13 +573,14 @@ const RentabilityCalculator: React.FC<RentabilityCalculatorProps> = ({ type }) =
                 htmlFor="comunidadPropietarios"
                 label="Comunidad de propietarios (€)"
               />
-              <input
+              <Input
                 type="number"
                 id="comunidadPropietarios"
                 name="comunidadPropietarios"
                 value={formData.comunidadPropietarios}
                 onChange={handleInputChange}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 py-1.5 px-3"
+                onFocus={handleFocus}
+                onBlur={handleBlur}
               />
             </div>
             <div>
@@ -536,13 +588,14 @@ const RentabilityCalculator: React.FC<RentabilityCalculatorProps> = ({ type }) =
                 htmlFor="mantenimiento"
                 label="Mantenimiento (€)"
               />
-              <input
+              <Input
                 type="number"
                 id="mantenimiento"
                 name="mantenimiento"
                 value={formData.mantenimiento}
                 onChange={handleInputChange}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 py-1.5 px-3"
+                onFocus={handleFocus}
+                onBlur={handleBlur}
               />
             </div>
             <div>
@@ -550,13 +603,14 @@ const RentabilityCalculator: React.FC<RentabilityCalculatorProps> = ({ type }) =
                 htmlFor="perdidaAlquiler"
                 label="Pérdida por periodos vacíos (€)"
               />
-              <input
+              <Input
                 type="number"
                 id="perdidaAlquiler"
                 name="perdidaAlquiler"
                 value={formData.perdidaAlquiler}
                 onChange={handleInputChange}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 py-1.5 px-3"
+                onFocus={handleFocus}
+                onBlur={handleBlur}
               />
             </div>
           </div>
@@ -588,156 +642,27 @@ const RentabilityCalculator: React.FC<RentabilityCalculatorProps> = ({ type }) =
           </div>
         </div>
       </section>
+      <Button onClick={() => setShowSaveForm(true)} className="mt-4 bg-gray-700 text-white hover:bg-gray-600 transition-colors duration-200">
+        Guardar cálculo
+      </Button>
       {showReformaDetails && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center">
-          <div className="bg-white p-5 rounded-lg shadow-xl max-w-2xl w-full">
-            <h3 className="text-lg font-bold mb-4">Desglose de costes de reforma</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="materiales" label="Materiales (€)" />
-                <input
-                  type="number"
-                  id="materiales"
-                  name="materiales"
-                  value={reformaDetails.materiales}
-                  onChange={handleReformaDetailsChange}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 py-1.5 px-3"
-                />
-              </div>
-              <div>
-                <Label htmlFor="manoDeObra" label="Mano de obra (€)" />
-                <input
-                  type="number"
-                  id="manoDeObra"
-                  name="manoDeObra"
-                  value={reformaDetails.manoDeObra}
-                  onChange={handleReformaDetailsChange}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 py-1.5 px-3"
-                />
-              </div>
-              <div>
-                <Label htmlFor="costeElectricidad" label="Coste electricidad (€)" />
-                <input
-                  type="number"
-                  id="costeElectricidad"
-                  name="costeElectricidad"
-                  value={reformaDetails.costeElectricidad}
-                  onChange={handleReformaDetailsChange}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 py-1.5 px-3"
-                />
-              </div>
-              <div>
-                <Label htmlFor="costeFontaneria" label="Coste fontanería (€)" />
-                <input
-                  type="number"
-                  id="costeFontaneria"
-                  name="costeFontaneria"
-                  value={reformaDetails.costeFontaneria}
-                  onChange={handleReformaDetailsChange}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 py-1.5 px-3"
-                />
-              </div>
-              <div>
-                <Label htmlFor="costeAlbanileria" label="Coste albañilería (€)" />
-                <input
-                  type="number"
-                  id="costeAlbanileria"
-                  name="costeAlbanileria"
-                  value={reformaDetails.costeAlbanileria}
-                  onChange={handleReformaDetailsChange}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 py-1.5 px-3"
-                />
-              </div>
-              <div>
-                <Label htmlFor="costePuertas" label="Coste puertas (€)" />
-                <input
-                  type="number"
-                  id="costePuertas"
-                  name="costePuertas"
-                  value={reformaDetails.costePuertas}
-                  onChange={handleReformaDetailsChange}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 py-1.5 px-3"
-                />
-              </div>
-              <div>
-                <Label htmlFor="costeVentanas" label="Coste ventanas (€)" />
-                <input
-                  type="number"
-                  id="costeVentanas"
-                  name="costeVentanas"
-                  value={reformaDetails.costeVentanas}
-                  onChange={handleReformaDetailsChange}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 py-1.5 px-3"
-                />
-              </div>
-              <div>
-                <Label htmlFor="costeSuelo" label="Coste suelo (€)" />
-                <input
-                  type="number"
-                  id="costeSuelo"
-                  name="costeSuelo"
-                  value={reformaDetails.costeSuelo}
-                  onChange={handleReformaDetailsChange}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 py-1.5 px-3"
-                />
-              </div>
-              <div>
-                <Label htmlFor="costePintura" label="Coste pintura (€)" />
-                <input
-                  type="number"
-                  id="costePintura"
-                  name="costePintura"
-                  value={reformaDetails.costePintura}
-                  onChange={handleReformaDetailsChange}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 py-1.5 px-3"
-                />
-              </div>
-              <div>
-                <Label htmlFor="costeHomeStaging" label="Coste home-staging (€)" />
-                <input
-                  type="number"
-                  id="costeHomeStaging"
-                  name="costeHomeStaging"
-                  value={reformaDetails.costeHomeStaging}
-                  onChange={handleReformaDetailsChange}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 py-1.5 px-3"
-                />
-              </div>
-              <div>
-                <Label htmlFor="costeAltaSuministros" label="Coste alta de suministros (€)" />
-                <input
-                  type="number"
-                  id="costeAltaSuministros"
-                  name="costeAltaSuministros"
-                  value={reformaDetails.costeAltaSuministros}
-                  onChange={handleReformaDetailsChange}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 py-1.5 px-3"
-                />
-              </div>
-              <div>
-                <Label htmlFor="otros" label="Otros gastos (€)" />
-                <input
-                  type="number"
-                  id="otros"
-                  name="otros"
-                  value={reformaDetails.otros}
-                  onChange={handleReformaDetailsChange}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 py-1.5 px-3"
-                />
-              </div>
-            </div>
-            <div className="mt-4 flex justify-between items-center">
-              <p className="font-semibold">Total: {formData.costeReforma}€</p>
-              <button
-                onClick={() => setShowReformaDetails(false)}
-                className="px-4 py-2 bg-gray-700 text-white rounded hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-50"
-              >
-                Cerrar
-              </button>
-            </div>
-          </div>
-        </div>
+        <ReformaPopup 
+          reformaDetails={reformaDetails}
+          onReformaChange={(newDetails) => {
+            setReformaDetails(newDetails);
+            setFormData(prev => ({
+              ...prev,
+              costeReforma: Object.values(newDetails).reduce((a, b) => a + b, 0)
+            }));
+          }}
+          onClose={() => setShowReformaDetails(false)}
+        />
       )}
+      <SaveCalculationForm
+        isOpen={showSaveForm}
+        onSave={handleSaveCalculation}
+        onClose={() => setShowSaveForm(false)}
+      />
     </div>
   );
 };
