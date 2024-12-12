@@ -165,7 +165,7 @@ const RentabilityCalculator: React.FC<RentabilityCalculatorProps> = ({ type, ini
   const results = calculateResults;
 
   const Label = ({ htmlFor, label }: { htmlFor: string; label: string }) => (
-    <label htmlFor={htmlFor} className="block text-sm font-semibold text-gray-700">{label}</label>
+    <label htmlFor={htmlFor} className="block text-sm font-semibold text-gray-700 mb-2">{label}</label>
   );
 
   const handleSaveCalculation = (name: string) => {
